@@ -1,9 +1,22 @@
+// src/main/ets/components/EnvironmentCard.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 import { MockData } from '../data/MockData';
 
 @Component
 export struct EnvironmentCard {
+  // 控制安全指数进场动画的状态变量
+  @State currentSafeIndex: number = 0;
+
+  aboutToAppear() {
+    // 延迟一点时间后触发动画，让进场更自然
+    setTimeout(() => {
+      animateTo({ duration: 1500, curve: Curve.FastOutSlowIn }, () => {
+        this.currentSafeIndex = MockData.safeIndex;
+      });
+    }, 200);
+  }
+
   build() {
     Column() {
       Row() {
@@ -14,16 +27,18 @@ export struct EnvironmentCard {
 
       Column() {
         Stack() {
-          // 替换为 Progress 组件，精确控制线条粗细
-          Progress({ value: MockData.safeIndex, total: 100, type: ProgressType.Ring })
+          // 环形进度条，加入了霓虹发光阴影
+          Progress({ value: this.currentSafeIndex, total: 100, type: ProgressType.Ring })
             .width(116)
             .height(116)
             .color(Colors.Normal)
             .style({ strokeWidth: 10 })
+            .shadow({ radius: 15, color: Colors.Normal, offsetX: 0, offsetY: 0 })
 
           Column({ space: 4 }) {
-            Text(`${MockData.safeIndex}`)
-              .fontColor(Colors.Title) // 改为白色，解决看不清的问题
+            // 中心数值跟随动画进度动态增长
+            Text(`${Math.floor(this.currentSafeIndex)}`)
+              .fontColor(Colors.Title)
               .fontSize(36)
               .fontWeight(FontWeight.Bold)
             Text('安全指数')

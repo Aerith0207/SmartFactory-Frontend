@@ -1,3 +1,4 @@
+// src/main/ets/components/AgvCard.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 import { MockData } from '../data/MockData';
@@ -27,10 +28,17 @@ export struct AgvCard {
         Row({ space: 15 }) {
           this.DistanceItem('左侧', `${MockData.agv.left} cm`, '←', Colors.Normal)
           Stack() {
+            // 外层扩散雷达波
             Circle({ width: 86, height: 86 }).fill('transparent').stroke(Colors.Cyan).strokeWidth(2)
               .scale({ x: this.radarScale, y: this.radarScale }).opacity(this.radarOpacity)
+
+            // 中间固定环
             Circle({ width: 86, height: 86 }).fill(Colors.BackgroundSoft).stroke(Colors.Cyan).strokeWidth(2)
+
+            // 内层AGV实体圈 (新增微发光)
             Circle({ width: 60, height: 60 }).fill('transparent').stroke(Colors.BorderSoft).strokeWidth(1)
+              .shadow({ radius: 8, color: Colors.Cyan, offsetX: 0, offsetY: 0 })
+
             Text('AGV').fontColor(Colors.Title).fontSize(17).fontWeight(FontWeight.Bold)
           }
           this.DistanceItem('右侧', `${MockData.agv.right} cm`, '→', Colors.Warning)
@@ -48,7 +56,6 @@ export struct AgvCard {
     Column({ space: 4 }) {
       Text(label).fontColor(Colors.TextNormal).fontSize(13)
       Text(value).fontColor(valueColor).fontSize(20).fontWeight(FontWeight.Bold)
-      // 增加行高并微调字号，防止特殊字符被截断
       Text(direction).fontColor(Colors.Cyan).fontSize(20).lineHeight(22)
     }
     .width(80).alignItems(HorizontalAlign.Center).margin({ top: 4, bottom: 4 })

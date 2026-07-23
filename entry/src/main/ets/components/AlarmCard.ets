@@ -1,3 +1,4 @@
+// src/main/ets/components/AlarmCard.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 
@@ -15,6 +16,17 @@ export struct AlarmCard {
     { time: '15:05', content: 'AGV 避障触发', status: '处理中', isResolved: false },
     { time: '15:12', content: '烟雾预警', status: '已恢复', isResolved: true }
   ];
+
+  // 新增：告警呼吸灯的透明度状态
+  @State warningOpacity: number = 1;
+
+  aboutToAppear() {
+    setInterval(() => {
+      animateTo({ duration: 800, curve: Curve.EaseInOut }, () => {
+        this.warningOpacity = this.warningOpacity === 1 ? 0.3 : 1;
+      });
+    }, 1000);
+  }
 
   build() {
     Column() {
@@ -52,18 +64,20 @@ export struct AlarmCard {
               Text(item.time).width('25%').fontColor(Colors.TextNormal).fontSize(13)
               Text(item.content)
                 .width('45%')
-                .fontColor(item.isResolved ? Colors.TextNormal : Colors.Warning)
+                .fontColor(item.isResolved ? Colors.TextNormal : Colors.Danger) // 异常内容直接标红
                 .fontSize(13)
               Text(item.status)
                 .width('30%')
-                .fontColor(item.isResolved ? Colors.Normal : Colors.Warning)
+                .fontColor(item.isResolved ? Colors.Normal : Colors.Danger)
                 .fontSize(13)
                 .textAlign(TextAlign.End)
             }
             .width(Constants.FullWidth)
             .height(34)
             .padding({ left: 10, right: 10 })
-            .backgroundColor(Colors.BackgroundSoft)
+            // 正常条目背景为软背景，未处理异常条目背景微红并增加呼吸效果
+            .backgroundColor(item.isResolved ? Colors.BackgroundSoft : '#1AFFF5E5')
+            .opacity(item.isResolved ? 1 : this.warningOpacity)
             .borderRadius(4)
           }
         })

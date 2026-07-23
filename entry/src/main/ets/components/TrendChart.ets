@@ -1,8 +1,21 @@
+// src/main/ets/components/TrendChart.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 
 @Component
 export struct TrendChart {
+  // 新增：控制图表进场透明度
+  @State chartOpacity: number = 0;
+
+  aboutToAppear() {
+    // 页面加载时的渐显动画
+    setTimeout(() => {
+      animateTo({ duration: 1500, curve: Curve.EaseOut }, () => {
+        this.chartOpacity = 1;
+      });
+    }, 300);
+  }
+
   build() {
     Column() {
       Row() {
@@ -17,8 +30,8 @@ export struct TrendChart {
           .margin({ left: 8 })
         Blank()
         Row({ space: 8 }) {
-          this.Legend('温度', Colors.Cyan)
-          this.Legend('湿度', Colors.Normal)
+          this.Legend('温度', Colors.Cyan) // 维持温度图例[cite: 8]
+          this.Legend('湿度', Colors.Normal) // 维持湿度图例[cite: 8]
         }
       }
       .width(Constants.FullWidth)
@@ -35,6 +48,7 @@ export struct TrendChart {
         .height('72%')
         .justifyContent(FlexAlign.SpaceBetween)
 
+        // 温度折线[cite: 8]
         Polyline()
           .width('90%')
           .height('72%')
@@ -42,7 +56,10 @@ export struct TrendChart {
           .fill('none')
           .stroke(Colors.Cyan)
           .strokeWidth(3)
+          .shadow({ radius: 8, color: Colors.Cyan, offsetX: 0, offsetY: 0 }) // 添加青色荧光
+          .opacity(this.chartOpacity)
 
+        // 湿度折线[cite: 8]
         Polyline()
           .width('90%')
           .height('72%')
@@ -50,6 +67,8 @@ export struct TrendChart {
           .fill('none')
           .stroke(Colors.Normal)
           .strokeWidth(3)
+          .shadow({ radius: 8, color: Colors.Normal, offsetX: 0, offsetY: 0 }) // 添加绿色荧光
+          .opacity(this.chartOpacity)
       }
       .layoutWeight(1)
       .width(Constants.FullWidth)

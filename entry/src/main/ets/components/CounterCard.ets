@@ -5,14 +5,12 @@ import { MockData } from '../data/MockData';
 
 @Component
 export struct CounterCard {
-  // 定义用于显示的动态数字
   @State displayCount: number = 0;
   private targetCount: number = MockData.todayCount;
   private timer: number = -1;
 
   aboutToAppear() {
-    // 实现数字快速滚动的加载动画
-    let step = Math.ceil(this.targetCount / 30); // 分30次递增完
+    let step = Math.ceil(this.targetCount / 30);
     this.timer = setInterval(() => {
       if (this.displayCount + step >= this.targetCount) {
         this.displayCount = this.targetCount;
@@ -20,11 +18,10 @@ export struct CounterCard {
       } else {
         this.displayCount += step;
       }
-    }, 30); // 每30ms更新一次
+    }, 30);
   }
 
   aboutToDisappear() {
-    // 组件销毁时清理定时器，防止内存泄漏
     if (this.timer !== -1) {
       clearInterval(this.timer);
     }
@@ -44,14 +41,20 @@ export struct CounterCard {
         Row() {
           Column({ space: 2 }) {
             Text('今日通过总数').fontColor(Colors.TextNormal).fontSize(14)
-            // 绑定动态显示的数字
-            Text(`${this.displayCount}`).fontColor(Colors.Title).fontSize(36).fontWeight(FontWeight.Bold)
+            // 新增：给大数字加上科技感投影和间距
+            Text(`${this.displayCount}`)
+              .fontColor(Colors.Title)
+              .fontSize(40)
+              .fontWeight(FontWeight.Bolder)
+              .letterSpacing(2)
+              .shadow({ radius: 5, color: Colors.Cyan, offsetX: 0, offsetY: 0 })
           }
           .alignItems(HorizontalAlign.Start)
           Blank()
           Text('PCS').fontColor(Colors.Cyan).fontSize(14).fontWeight(FontWeight.Bold)
         }
         .width(Constants.FullWidth)
+        .margin({ bottom: 8 })
 
         this.BarItem('A 类物料', 152, 200, Colors.Cyan)
         this.BarItem('B 类物料', 181, 200, Colors.Warning)
