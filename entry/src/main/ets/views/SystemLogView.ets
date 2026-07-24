@@ -1,9 +1,10 @@
+// src/main/ets/views/SystemLogView.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 
 interface SystemLog {
   time: string;
-  module: string; // 将严格匹配: '环境传感', 'AGV调度', '生产指令', '系统授权'
+  module: string;
   content: string;
   level: string;
 }
@@ -22,10 +23,8 @@ interface DeviceStatus {
 
 @Component
 export struct SystemLogView {
-  // 新增：用于控制当前激活的筛选器状态
   @State currentFilter: string = '全部';
 
-  // 优化：重写模块名称，使其与工业逻辑和筛选器严格对应
   @State logList: SystemLog[] = [
     { time: '10:05:12', module: '生产指令', content: '下发结束排产指令，订单A100生产完成', level: 'INFO' },
     { time: '09:48:30', module: '环境传感', content: 'CO浓度恢复正常范围内', level: 'SUCCESS' },
@@ -50,9 +49,11 @@ export struct SystemLogView {
     { device: '光电计数栅栏', status: '正常', runTime: '12h 45m' }
   ];
 
+  // 定义筛选器数组
+  private filterOptions: string[] = ['全部', '设备状态', '安全报警', '控制审计'];
+
   build() {
     Column() {
-      // 1. 顶部标题栏
       Row() {
         Text('系统运行日志中心')
           .fontFamily('HarmonyOS Sans')
@@ -80,7 +81,6 @@ export struct SystemLogView {
         .width(Constants.FullWidth)
         .height(110)
 
-        // 3. 核心日志区域 (加入了真实过滤逻辑)
         this.MainLogCard()
 
         Row({ space: Constants.PanelGap }) {
@@ -99,19 +99,27 @@ export struct SystemLogView {
     .backgroundColor(Colors.Background)
   }
 
-  // --- 核心过滤与列表渲染 ---
   @Builder
   MainLogCard() {
     Column() {
       Row() {
         Text('实时系统运行日志流水').fontColor(Colors.Title).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        // 动态绑定 active 状态
+
+        // 核心修复：抛弃 @Builder 传参，改用 ForEach 直接映射渲染，确保 @State 完全响应
         Row({ space: 8 }) {
-          this.FilterTag('全部', this.currentFilter === '全部')
-          this.FilterTag('设备状态', this.currentFilter === '设备状态')
-          this.FilterTag('安全报警', this.currentFilter === '安全报警')
-          this.FilterTag('控制审计', this.currentFilter === '控制审计')
+          ForEach(this.filterOptions, (filterName: string) => {
+            Text(filterName)
+              .fontColor(this.currentFilter === filterName ? Colors.Background : Colors.TextNormal)
+              .fontSize(12)
+              .backgroundColor(this.currentFilter === filterName ? Colors.Cyan : Colors.BackgroundSoft)
+              .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+              .borderRadius(12)
+              .animation({ duration: 300, curve: Curve.FastOutSlowIn }) // 丝滑过渡动画
+              .onClick(() => {
+                this.currentFilter = filterName;
+              })
+          })
         }
       }.width(Constants.FullWidth).padding({ bottom: 12 }).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
 
@@ -122,7 +130,6 @@ export struct SystemLogView {
         Text('日志级别').width('15%').fontColor(Colors.TextMuted).fontSize(13).textAlign(TextAlign.End)
       }.width(Constants.FullWidth).padding({ top: 12, bottom: 8, left: 12, right: 12 })
 
-      // 利用 Array.filter 实时对数据源进行过滤
       List({ space: 8 }) {
         ForEach(this.logList.filter(item => {
           if (this.currentFilter === '全部') return true;
@@ -146,22 +153,6 @@ export struct SystemLogView {
     .layoutWeight(2.5).width(Constants.FullWidth).backgroundColor(Colors.PanelBg).borderRadius(Constants.CardRadius).border({ width: Constants.BorderWidth, color: Colors.BorderSoft }).padding(16)
   }
 
-  // 改造标签组件，使其支持 onClick 点击事件
-  @Builder
-  FilterTag(label: string, isActive: boolean) {
-    Text(label)
-      .fontColor(isActive ? Colors.Background : Colors.TextNormal)
-      .fontSize(12)
-      .backgroundColor(isActive ? Colors.Cyan : Colors.BackgroundSoft)
-      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-      .borderRadius(12)
-      .animation({ duration: 300, curve: Curve.FastOutSlowIn }) // 使用声明式动画属性
-      .onClick(() => {
-        this.currentFilter = label;
-      })
-  }
-
-  // 以下为未改动的辅助组件
   @Builder KpiStatsCard() {
     Column() {
       Row() { Text('今日运行统计').fontColor(Colors.Title).fontSize(16).fontWeight(FontWeight.Bold) }.width(Constants.FullWidth).padding({ bottom: 8 }).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
