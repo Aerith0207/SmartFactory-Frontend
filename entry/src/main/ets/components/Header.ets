@@ -10,9 +10,7 @@ export struct Header {
 
   aboutToAppear() {
     this.updateTime();
-    this.timer = setInterval(() => {
-      this.updateTime();
-    }, 1000);
+    this.timer = setInterval(() => { this.updateTime(); }, 1000);
   }
 
   aboutToDisappear() {
@@ -31,64 +29,62 @@ export struct Header {
   }
 
   build() {
-    Stack({ alignContent: Alignment.Center }) {
+    Row() { // 放弃 Stack，改用 Row 弹性布局
 
-      // 中央硬核机甲风标题区
-      Row({ space: 15 }) {
+      // 左侧机甲风标题
+      Row({ space: 12 }) {
         this.TechDecoration(true)
         Text('数据大屏')
           .fontFamily('HarmonyOS Sans')
           .fontColor(Colors.Cyan)
-          .fontSize(40)
+          .fontSize(34) // 略微缩小字号防止拥挤
           .fontWeight(FontWeight.Bolder)
-          .letterSpacing(8)
+          .letterSpacing(6)
         this.TechDecoration(false)
       }
 
+      Blank() // 核心修改：利用 Blank 自动撑开剩余空间，将右侧推过去
+
       // 右侧系统状态区
-      Row({ space: 28 }) {
+      Row({ space: 24 }) { // 缩小了各项间距
         this.StatusItem('系统状态', '运行中', Colors.Cyan)
         this.StatusItem('在线设备', `${MockData.onlineCount}/${MockData.totalCount}`, Colors.Cyan)
         this.StatusItem('实时告警', `${MockData.alarmCount}`, MockData.alarmCount > 0 ? Colors.Warning : Colors.Normal)
 
         Text(this.currentTime)
-          .fontColor(Colors.Cyan) // 统一时间颜色，融入整体氛围
+          .fontColor(Colors.Cyan)
           .fontSize(16)
           .fontFamily('Courier New')
           .fontWeight(FontWeight.Bold)
-          .margin({ left: 12 })
       }
-      .width(Constants.FullWidth)
-      .padding({ right: 32 })
-      .justifyContent(FlexAlign.End)
     }
     .width(Constants.FullWidth)
     .height('10%')
-    .backgroundColor(Colors.Background) // 使用更深的背景色凸显顶部科技感
+    .padding({ left: 24, right: 24 }) // 调整两侧内边距
+    .backgroundColor(Colors.Background)
     .border({ width: { bottom: 1 }, color: Colors.BorderSoft })
   }
 
-  // 构建两侧对称的科技线条装饰
   @Builder
   TechDecoration(isLeft: boolean) {
     Row() {
       if (isLeft) {
-        Text('///').fontColor(Colors.Border).fontSize(20).fontWeight(FontWeight.Bolder).fontStyle(FontStyle.Italic)
-        Divider().color(Colors.Cyan).strokeWidth(4).width(60).margin({ left: 8 })
+        Text('///').fontColor(Colors.Border).fontSize(18).fontWeight(FontWeight.Bolder).fontStyle(FontStyle.Italic)
+        Divider().color(Colors.Cyan).strokeWidth(4).width(40).margin({ left: 8 })
       } else {
-        Divider().color(Colors.Cyan).strokeWidth(4).width(60).margin({ right: 8 })
-        Text('///').fontColor(Colors.Border).fontSize(20).fontWeight(FontWeight.Bolder).fontStyle(FontStyle.Italic)
+        Divider().color(Colors.Cyan).strokeWidth(4).width(40).margin({ right: 8 })
+        Text('///').fontColor(Colors.Border).fontSize(18).fontWeight(FontWeight.Bolder).fontStyle(FontStyle.Italic)
       }
     }
   }
 
   @Builder
   StatusItem(label: string, value: string, valueColor: string) {
-    Column({ space: 6 }) {
-      Text(label).fontColor(Colors.TextMuted).fontSize(13)
-      Row({ space: 8 }) {
+    Column({ space: 4 }) {
+      Text(label).fontColor(Colors.TextMuted).fontSize(12)
+      Row({ space: 6 }) {
         Circle({ width: 8, height: 8 }).fill(valueColor)
-        Text(value).fontColor(valueColor).fontSize(18).fontWeight(FontWeight.Bold)
+        Text(value).fontColor(valueColor).fontSize(16).fontWeight(FontWeight.Bold)
       }
     }.alignItems(HorizontalAlign.Start)
   }

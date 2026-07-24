@@ -8,6 +8,12 @@ export struct EnvironmentCard {
   // 控制安全指数进场动画的状态变量
   @State currentSafeIndex: number = 0;
 
+  // 注入全局单向绑定变量
+  @StorageProp('env_temp') envTemp: string = '26';
+  @StorageProp('env_hum') envHum: string = '52';
+  @StorageProp('env_co') envCo: string = '18';
+  @StorageProp('env_smoke') envSmoke: string = '0.03';
+
   aboutToAppear() {
     // 延迟一点时间后触发动画，让进场更自然
     setTimeout(() => {
@@ -47,10 +53,11 @@ export struct EnvironmentCard {
         .margin({ top: 15, bottom: 15 })
 
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-          this.MetricItem('温度', `${MockData.temperature}℃`, Colors.Cyan)
-          this.MetricItem('湿度', `${MockData.humidity}%RH`, Colors.Normal)
-          this.MetricItem('CO 浓度', `${MockData.co} ppm`, Colors.Warning)
-          this.MetricItem('烟雾浓度', `${MockData.smoke}%`, Colors.Normal)
+          // 修改点：将 MockData 替换为绑定的全局变量
+          this.MetricItem('温度', `${this.envTemp}℃`, Colors.Cyan)
+          this.MetricItem('湿度', `${this.envHum}%RH`, Colors.Normal)
+          this.MetricItem('CO 浓度', `${this.envCo} ppm`, Colors.Warning)
+          this.MetricItem('烟雾浓度', `${this.envSmoke}%`, Colors.Normal)
         }
         .width('90%')
       }
