@@ -1,3 +1,4 @@
+// src/main/ets/views/DashboardView.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 import { Header } from '../components/Header';
@@ -9,9 +10,12 @@ import { AlarmCard } from '../components/AlarmCard';
 import { FactoryOverviewCard } from '../components/FactoryOverviewCard';
 import { TrendChart } from '../components/TrendChart';
 
-@Entry
 @Component
-struct DashboardPage {
+export struct DashboardView {
+
+  // 大屏页面无需直接处理底层数据变动，
+  // 建议将这部分 @StorageProp 下沉到具体的卡片组件（如 EnvironmentCard）中进行单向绑定
+
   build() {
     Column() {
       Header()

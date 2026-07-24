@@ -1,12 +1,17 @@
 // src/main/ets/components/AgvCard.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
-import { MockData } from '../data/MockData';
 
 @Component
 export struct AgvCard {
   @State radarScale: number = 1.0;
   @State radarOpacity: number = 0.8;
+
+  // 新增：注入全局单向绑定变量，接管 AGV 雷达数据
+  @StorageProp('agv_radar_front') agvFront: string = '120';
+  @StorageProp('agv_radar_left') agvLeft: string = '80';
+  @StorageProp('agv_radar_right') agvRight: string = '65';
+  @StorageProp('agv_radar_back') agvBack: string = '100';
 
   aboutToAppear() {
     animateTo({ duration: 2000, curve: Curve.EaseOut, iterations: -1 }, () => {
@@ -23,9 +28,13 @@ export struct AgvCard {
       .width(Constants.FullWidth).padding(Constants.DefaultPadding).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
 
       Column() {
-        this.DistanceItem('前方', `${MockData.agv.front} cm`, '↑', Colors.Cyan)
+        // 修改点：使用全局绑定的 agvFront 替换 MockData
+        this.DistanceItem('前方', `${this.agvFront} cm`, '↑', Colors.Cyan)
+
         Row({ space: 15 }) {
-          this.DistanceItem('左侧', `${MockData.agv.left} cm`, '←', Colors.Normal)
+          // 修改点：使用全局绑定的 agvLeft
+          this.DistanceItem('左侧', `${this.agvLeft} cm`, '←', Colors.Normal)
+
           Stack() {
             // 外层扩散雷达波
             Circle({ width: 86, height: 86 }).fill('transparent').stroke(Colors.Cyan).strokeWidth(2)
@@ -40,10 +49,14 @@ export struct AgvCard {
 
             Text('AGV').fontColor(Colors.Title).fontSize(17).fontWeight(FontWeight.Bold)
           }
-          this.DistanceItem('右侧', `${MockData.agv.right} cm`, '→', Colors.Warning)
+
+          // 修改点：使用全局绑定的 agvRight
+          this.DistanceItem('右侧', `${this.agvRight} cm`, '→', Colors.Warning)
         }
         .width(Constants.FullWidth).justifyContent(FlexAlign.Center)
-        this.DistanceItem('后方', `${MockData.agv.back} cm`, '↓', Colors.Cyan)
+
+        // 修改点：使用全局绑定的 agvBack
+        this.DistanceItem('后方', `${this.agvBack} cm`, '↓', Colors.Cyan)
       }
       .layoutWeight(1).width(Constants.FullWidth).justifyContent(FlexAlign.Center)
     }
