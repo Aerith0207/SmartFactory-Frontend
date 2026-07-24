@@ -31,10 +31,6 @@ export struct AlarmCard {
   build() {
     Column() {
       Row() {
-        Text('06')
-          .fontColor(Colors.Cyan)
-          .fontSize(15)
-          .fontWeight(FontWeight.Bold)
         Text('安全事件记录')
           .fontColor(Colors.Title)
           .fontSize(21)

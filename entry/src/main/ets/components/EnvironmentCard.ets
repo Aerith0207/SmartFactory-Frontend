@@ -20,8 +20,7 @@ export struct EnvironmentCard {
   build() {
     Column() {
       Row() {
-        Text('02').fontColor(Colors.Cyan).fontSize(16).fontWeight(FontWeight.Bold)
-        Text('环境安全指标').fontColor(Colors.Title).fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 8 })
+        Text('环境安全指标').fontColor(Colors.Title).fontSize(20).fontWeight(FontWeight.Bold)
       }
       .width(Constants.FullWidth).padding(Constants.DefaultPadding).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
 
@@ -33,7 +32,6 @@ export struct EnvironmentCard {
             .height(116)
             .color(Colors.Normal)
             .style({ strokeWidth: 10 })
-            .shadow({ radius: 15, color: Colors.Normal, offsetX: 0, offsetY: 0 })
 
           Column({ space: 4 }) {
             // 中心数值跟随动画进度动态增长

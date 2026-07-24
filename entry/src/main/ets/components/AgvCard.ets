@@ -18,7 +18,6 @@ export struct AgvCard {
   build() {
     Column() {
       Row() {
-        Text('05').fontColor(Colors.Cyan).fontSize(16).fontWeight(FontWeight.Bold)
         Text('AGV 空间雷达').fontColor(Colors.Title).fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 8 })
       }
       .width(Constants.FullWidth).padding(Constants.DefaultPadding).border({ width: { bottom: 1 }, color: Colors.BorderSoft })

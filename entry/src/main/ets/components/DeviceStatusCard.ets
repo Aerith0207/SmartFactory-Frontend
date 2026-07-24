@@ -40,7 +40,6 @@ export struct DeviceStatusCard {
   build() {
     Column() {
       Row() {
-        Text('01').fontColor(Colors.Cyan).fontSize(15).fontWeight(FontWeight.Bold)
         Text('设备在线状态').fontColor(Colors.Title).fontSize(21).fontWeight(FontWeight.Bold).margin({ left: 8 })
         Blank()
         Text(`${this.deviceList.length} DEVICES`).fontColor(Colors.TextMuted).fontSize(11)

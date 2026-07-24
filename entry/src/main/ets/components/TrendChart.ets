@@ -4,13 +4,11 @@ import { Constants } from '../utils/Constants';
 
 @Component
 export struct TrendChart {
-  // 新增：控制图表进场透明度
   @State chartOpacity: number = 0;
 
   aboutToAppear() {
-    // 页面加载时的渐显动画
     setTimeout(() => {
-      animateTo({ duration: 1500, curve: Curve.EaseOut }, () => {
+      animateTo({ duration: 1000, curve: Curve.EaseOut }, () => {
         this.chartOpacity = 1;
       });
     }, 300);
@@ -19,66 +17,96 @@ export struct TrendChart {
   build() {
     Column() {
       Row() {
-        Text('07')
-          .fontColor(Colors.Cyan)
-          .fontSize(15)
-          .fontWeight(FontWeight.Bold)
-        Text('环境数据趋势')
-          .fontColor(Colors.Title)
-          .fontSize(21)
-          .fontWeight(FontWeight.Bold)
-          .margin({ left: 8 })
+        Text('环境数据趋势').fontColor(Colors.Title).fontSize(21).fontWeight(FontWeight.Bold)
         Blank()
-        Row({ space: 8 }) {
-          this.Legend('温度', Colors.Cyan) // 维持温度图例[cite: 8]
-          this.Legend('湿度', Colors.Normal) // 维持湿度图例[cite: 8]
+        Row({ space: 12 }) {
+          this.Legend('温度(℃)', Colors.Cyan)
+          this.Legend('湿度(%RH)', Colors.Normal)
+          this.Legend('危气(ppm)', Colors.Warning)
         }
       }
-      .width(Constants.FullWidth)
-      .padding(Constants.DefaultPadding)
-      .border({ width: { bottom: 1 }, color: Colors.BorderSoft })
+      .width(Constants.FullWidth).padding(Constants.DefaultPadding).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
 
-      Stack({ alignContent: Alignment.Center }) {
-        Column({ space: 24 }) {
-          Divider().color(Colors.BorderSoft).opacity(0.6)
-          Divider().color(Colors.BorderSoft).opacity(0.6)
-          Divider().color(Colors.BorderSoft).opacity(0.6)
+      // 图表核心区域：左Y轴 + 图表 + 右Y轴
+      Row() {
+        // 左侧 Y 轴 (温湿度刻度)
+        Column({ space: 0 }) {
+          Text('100').fontColor(Colors.TextMuted).fontSize(10)
+          Text('75').fontColor(Colors.TextMuted).fontSize(10)
+          Text('50').fontColor(Colors.TextMuted).fontSize(10)
+          Text('25').fontColor(Colors.TextMuted).fontSize(10)
+          Text('0').fontColor(Colors.TextMuted).fontSize(10)
         }
-        .width('90%')
-        .height('72%')
+        .height('70%')
         .justifyContent(FlexAlign.SpaceBetween)
+        .margin({ bottom: 25, right: 8 })
 
-        // 温度折线[cite: 8]
-        Polyline()
-          .width('90%')
-          .height('72%')
-          .points([[0, 72], [50, 60], [100, 68], [150, 42], [200, 52], [250, 26], [300, 38]])
-          .fill('none')
-          .stroke(Colors.Cyan)
-          .strokeWidth(3)
-          .shadow({ radius: 8, color: Colors.Cyan, offsetX: 0, offsetY: 0 }) // 添加青色荧光
+        // 核心图表区
+        Stack({ alignContent: Alignment.Bottom }) {
+          // 背景参考线
+          Column({ space: 24 }) {
+            Divider().color(Colors.BorderSoft).opacity(0.4)
+            Divider().color(Colors.BorderSoft).opacity(0.4)
+            Divider().color(Colors.BorderSoft).opacity(0.4)
+            Divider().color(Colors.BorderSoft).opacity(0.4)
+          }.width('100%').height('70%').justifyContent(FlexAlign.SpaceBetween).margin({ bottom: 25 })
+
+          // 危气浓度的底端柱状图
+          Row({ space: 30 }) {
+            this.BarGroup(40, 20)
+            this.BarGroup(60, 30)
+            this.BarGroup(35, 50)
+            this.BarGroup(80, 25)
+            this.BarGroup(50, 40)
+            this.BarGroup(30, 20)
+            this.BarGroup(45, 35)
+          }
+          .width('100%').height('70%')
+          .alignItems(VerticalAlign.Bottom)
+          .justifyContent(FlexAlign.SpaceBetween)
+          .margin({ bottom: 25 })
           .opacity(this.chartOpacity)
 
-        // 湿度折线[cite: 8]
-        Polyline()
-          .width('90%')
-          .height('72%')
-          .points([[0, 28], [50, 38], [100, 18], [150, 50], [200, 42], [250, 72], [300, 58]])
-          .fill('none')
-          .stroke(Colors.Normal)
-          .strokeWidth(3)
-          .shadow({ radius: 8, color: Colors.Normal, offsetX: 0, offsetY: 0 }) // 添加绿色荧光
-          .opacity(this.chartOpacity)
+          // 温湿度折线图
+          Stack() {
+            Polyline().width('100%').height('100%').points([[0, 72], [45, 60], [90, 68], [135, 42], [180, 52], [225, 26], [270, 38]]).fill('none').stroke(Colors.Cyan).strokeWidth(3)
+            Polyline().width('100%').height('100%').points([[0, 28], [45, 38], [90, 18], [135, 50], [180, 42], [225, 72], [270, 58]]).fill('none').stroke(Colors.Normal).strokeWidth(3)
+          }
+          .width('100%').height('70%').margin({ bottom: 25 }).opacity(this.chartOpacity)
+
+          // X轴时间坐标
+          Row() {
+            Text('08:00').fontColor(Colors.TextMuted).fontSize(11)
+            Text('10:00').fontColor(Colors.TextMuted).fontSize(11)
+            Text('12:00').fontColor(Colors.TextMuted).fontSize(11)
+            Text('14:00').fontColor(Colors.TextMuted).fontSize(11)
+            Text('16:00').fontColor(Colors.TextMuted).fontSize(11)
+            Text('18:00').fontColor(Colors.TextMuted).fontSize(11)
+            Text('20:00').fontColor(Colors.TextMuted).fontSize(11)
+          }.width('100%').justifyContent(FlexAlign.SpaceBetween)
+
+        }
+        .layoutWeight(1)
+        .height(Constants.FullHeight)
+
+        // 右侧 Y 轴 (浓度刻度)
+        Column({ space: 0 }) {
+          Text('1.0').fontColor(Colors.TextMuted).fontSize(10)
+          Text('0.8').fontColor(Colors.TextMuted).fontSize(10)
+          Text('0.5').fontColor(Colors.TextMuted).fontSize(10)
+          Text('0.2').fontColor(Colors.TextMuted).fontSize(10)
+          Text('0.0').fontColor(Colors.TextMuted).fontSize(10)
+        }
+        .height('70%')
+        .justifyContent(FlexAlign.SpaceBetween)
+        .margin({ bottom: 25, left: 8 })
+
       }
       .layoutWeight(1)
       .width(Constants.FullWidth)
-      .padding({ bottom: 4 })
+      .padding({ left: 15, right: 15, bottom: 10, top: 15 })
     }
-    .width(Constants.FullWidth)
-    .height(Constants.FullHeight)
-    .backgroundColor(Colors.PanelBg)
-    .borderRadius(Constants.CardRadius)
-    .border({ width: Constants.BorderWidth, color: Colors.BorderSoft })
+    .width(Constants.FullWidth).height(Constants.FullHeight).backgroundColor(Colors.PanelBg).borderRadius(Constants.CardRadius).border({ width: Constants.BorderWidth, color: Colors.BorderSoft })
   }
 
   @Builder
@@ -87,5 +115,13 @@ export struct TrendChart {
       Circle({ width: 6, height: 6 }).fill(color)
       Text(label).fontColor(Colors.TextNormal).fontSize(12)
     }
+  }
+
+  @Builder
+  BarGroup(coHeight: number, smokeHeight: number) {
+    Row({ space: 4 }) {
+      Rect({ width: 6, height: `${coHeight}%` }).fill(Colors.Warning).radius(2)
+      Rect({ width: 6, height: `${smokeHeight}%` }).fill(Colors.Border).radius(2)
+    }.height('100%').alignItems(VerticalAlign.Bottom)
   }
 }
