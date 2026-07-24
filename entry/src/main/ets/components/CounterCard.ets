@@ -30,8 +30,7 @@ export struct CounterCard {
   build() {
     Column() {
       Row() {
-        Text('04').fontColor(Colors.Cyan).fontSize(15).fontWeight(FontWeight.Bold)
-        Text('光电计数统计').fontColor(Colors.Title).fontSize(21).fontWeight(FontWeight.Bold).margin({ left: 8 })
+        Text('光电计数统计').fontColor(Colors.Title).fontSize(20).fontWeight(FontWeight.Bold)
         Blank()
         Text('TODAY').fontColor(Colors.TextMuted).fontSize(11)
       }
@@ -47,7 +46,6 @@ export struct CounterCard {
               .fontSize(40)
               .fontWeight(FontWeight.Bolder)
               .letterSpacing(2)
-              .shadow({ radius: 5, color: Colors.Cyan, offsetX: 0, offsetY: 0 })
           }
           .alignItems(HorizontalAlign.Start)
           Blank()

@@ -20,7 +20,6 @@ export struct FactoryOverviewCard {
   build() {
     Column() {
       Row() {
-        Text('03').fontColor(Colors.Cyan).fontSize(16).fontWeight(FontWeight.Bold)
         Text('车间监控拓扑').fontColor(Colors.Title).fontSize(20).fontWeight(FontWeight.Bold).margin({ left: 8 })
       }
       .width(Constants.FullWidth).padding(Constants.DefaultPadding).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
