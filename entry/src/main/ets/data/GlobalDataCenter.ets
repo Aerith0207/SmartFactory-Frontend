@@ -23,11 +23,12 @@ export class GlobalDataCenter {
     AppStorage.setOrCreate('switch_photoelectric', true);
     AppStorage.setOrCreate('switch_light', false); // 红外照明模块
 
-    // 4. AGV 雷达与运行状态
+    // 4. AGV 雷达与运行状态 (修改初始值以匹配后续解析)
     AppStorage.setOrCreate('agv_status', '运行中');
-    AppStorage.setOrCreate('agv_radar_front', '120');
-    AppStorage.setOrCreate('agv_radar_left', '65');
-    AppStorage.setOrCreate('agv_radar_right', '80');
-    AppStorage.setOrCreate('agv_radar_back', '150');
+    AppStorage.setOrCreate('agv_radar_front', '0');
+    AppStorage.setOrCreate('agv_radar_left', '0');
+    AppStorage.setOrCreate('agv_radar_right', '0');
+    AppStorage.setOrCreate('agv_radar_back', '0');
+    AppStorage.setOrCreate('agv_radar_unit', 'cm'); // 可选：记录单位
   }
 }

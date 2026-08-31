@@ -1,6 +1,7 @@
 // src/main/ets/entryability/EntryAbility.ets
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { GlobalDataCenter } from '../data/GlobalDataCenter';
+import { MqttManager } from '../utils/MqttManager'; // 导入硬件通信模块
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 
@@ -24,9 +25,13 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
-
+    // 初始化全局状态总线
     GlobalDataCenter.init();
-    // 新增：强制设置屏幕为横屏
+
+    // 新增：拉起后台 MQTT 服务，开始接收小车雷达数据
+    MqttManager.getInstance().connect();
+
+    // 强制设置屏幕为横屏，并隐藏系统状态栏
     windowStage.getMainWindow().then((win: window.Window) => {
       win.setPreferredOrientation(window.Orientation.LANDSCAPE);
       win.setWindowSystemBarEnable([]);
