@@ -25,10 +25,10 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
-    // 初始化全局状态总线
+    // 1. 初始化全局状态总线
     GlobalDataCenter.init();
 
-    // 新增：拉起后台 MQTT 服务，开始接收小车雷达数据
+    // 2. 拉起后台 MQTT 服务，开始建立连接并订阅硬件数据
     MqttManager.getInstance().connect();
 
     // 强制设置屏幕为横屏，并隐藏系统状态栏
