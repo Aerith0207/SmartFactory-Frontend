@@ -1,6 +1,7 @@
 // src/main/ets/views/ControlView.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
+import { MqttManager } from '../utils/MqttManager';
 
 interface ActionCommand {
   label: string;
@@ -23,34 +24,19 @@ interface SensorRowParams {
 
 @Component
 export struct ControlView {
-  // --- 全局数据总线双向绑定 (对接硬件 MQTT) ---
+  // --- 绑定全局 MQTT 数据 ---
+  @StorageLink('env_temp') envTemp: number = 26;
+  @StorageLink('env_hum') envHum: number = 55;
+  @StorageLink('env_mq2_adc') envSmoke: number = 0;
+  @StorageLink('env_mq7_adc') envCo: number = 0;
 
-  // 1. 传感器实时数值 (初始值对齐大屏)
-  @StorageLink('env_temp') envTemp: string = '26';
-  @StorageLink('env_hum') envHum: string = '52';
-  @StorageLink('env_smoke') envSmoke: string = '0.03';
-  @StorageLink('env_co') envCo: string = '18';
-  @StorageLink('env_photo') envPhoto: string = 'Triggered: 458';
+  @StorageLink('agv_radar_front') agvFront: string = '0';
+  @StorageLink('agv_radar_left') agvLeft: string = '0';
+  @StorageLink('agv_radar_right') agvRight: string = '0';
+  @StorageLink('agv_radar_back') agvBack: string = '0';
 
-  // 2. AGV 雷达避障数值 (新增绑定)
-  @StorageLink('agv_radar_front') agvFront: string = '120';
-  @StorageLink('agv_radar_left') agvLeft: string = '80';
-  @StorageLink('agv_radar_right') agvRight: string = '65';
-  @StorageLink('agv_radar_back') agvBack: string = '100';
-
-  // 3. 设备在线心跳状态
-  @StorageLink('online_temp') onlineTemp: boolean = true;
-  @StorageLink('online_smoke') onlineSmoke: boolean = true;
-  @StorageLink('online_co') onlineCo: boolean = true;
-  @StorageLink('online_photo') onlinePhoto: boolean = true;
-  @StorageLink('online_light') onlineLight: boolean = true;
-
-  // 4. 硬件控制下发开关
-  @StorageLink('switch_temp') switchTemp: boolean = true;
-  @StorageLink('switch_smoke') switchSmoke: boolean = true;
-  @StorageLink('switch_co') switchCo: boolean = true;
-  @StorageLink('switch_photo') switchPhoto: boolean = true;
   @StorageLink('switch_light') switchLight: boolean = false;
+  @StorageLink('light_mode') lightMode: number = -1;
 
   // --- 静态配置数据 ---
   private agvActions: ActionCommand[] = [
@@ -92,17 +78,26 @@ export struct ControlView {
 
       // 主体三分栏区域
       Row({ space: Constants.PanelGap }) {
-
         // --- 模块一：环境与照明控制 ---
         Column({ space: 16 }) {
           this.PanelTitle('环境安全监测与控制')
 
           List({ space: 12 }) {
-            this.SensorRow({ name: '温湿度传感器', isOnline: this.onlineTemp, val: `${this.envTemp}℃ / ${this.envHum}%RH`, isOn: this.switchTemp, onToggle: (v: boolean) => { this.switchTemp = v } })
-            this.SensorRow({ name: '烟雾传感器', isOnline: this.onlineSmoke, val: `${this.envSmoke}%`, isOn: this.switchSmoke, onToggle: (v: boolean) => { this.switchSmoke = v } })
-            this.SensorRow({ name: 'CO 传感器', isOnline: this.onlineCo, val: `${this.envCo} ppm`, isOn: this.switchCo, onToggle: (v: boolean) => { this.switchCo = v } })
-            this.SensorRow({ name: '光电传感器', isOnline: this.onlinePhoto, val: this.envPhoto, isOn: this.switchPhoto, onToggle: (v: boolean) => { this.switchPhoto = v } })
-            this.SensorRow({ name: '红外照明模块', isOnline: this.onlineLight, val: this.switchLight ? 'Active' : 'Standby', isOn: this.switchLight, onToggle: (v: boolean) => { this.switchLight = v } })
+            this.SensorRow({ name: '温湿度传感器', isOnline: true, val: `${this.envTemp}℃ / ${this.envHum}%`, isOn: true, onToggle: (v: boolean) => {} })
+            this.SensorRow({ name: '烟雾传感器', isOnline: true, val: `${this.envSmoke} adc`, isOn: true, onToggle: (v: boolean) => {} })
+            this.SensorRow({ name: 'CO 传感器', isOnline: true, val: `${this.envCo} adc`, isOn: true, onToggle: (v: boolean) => {} })
+
+            // 真实指令下发：灯光控制
+            this.SensorRow({
+              name: '红外照明模块',
+              isOnline: true,
+              val: this.switchLight ? 'Manual On' : (this.lightMode === -1 ? 'Auto Mode' : 'Off'),
+              isOn: this.switchLight,
+              onToggle: (isOn: boolean) => {
+                this.switchLight = isOn;
+                MqttManager.getInstance().publishLightControl(isOn ? 'light_on' : 'light_off');
+              }
+            })
           }
           .layoutWeight(1)
           .width('100%')
@@ -127,7 +122,6 @@ export struct ControlView {
             }.width('100%')
             Divider().color(Colors.BorderSoft).opacity(0.5)
             Row() {
-              // 绑定 AGV 雷达变量
               this.RadarItem('前方', `${this.agvFront}cm`, Colors.Normal)
               this.RadarItem('左侧', `${this.agvLeft}cm`, Colors.Warning)
               this.RadarItem('右侧', `${this.agvRight}cm`, Colors.Cyan)
@@ -226,14 +220,6 @@ export struct ControlView {
           .backgroundColor(Colors.Danger)
           .borderRadius(8)
           .shadow({ radius: 15, color: Colors.Danger, offsetX: 0, offsetY: 0 })
-          .onClick(() => {
-            AlertDialog.show({
-              title: '!! 紧急停止 !!',
-              message: '您即将触发全厂紧急停止信号。车间所有传动设备与AGV将立即断电。此操作不可逆！',
-              primaryButton: { value: '取消', fontColor: Colors.TextNormal, action: () => {} },
-              secondaryButton: { value: '确认急停', fontColor: Colors.Danger, action: () => {} }
-            })
-          })
         }
         .layoutWeight(1)
         .height('100%')
@@ -241,7 +227,6 @@ export struct ControlView {
         .borderRadius(Constants.CardRadius)
         .border({ width: Constants.BorderWidth, color: Colors.BorderSoft })
         .padding(20)
-
       }
       .width(Constants.FullWidth)
       .layoutWeight(1)
@@ -266,6 +251,10 @@ export struct ControlView {
     .width(Constants.FullWidth)
     .height(Constants.FullHeight)
   }
+
+  // =====================================
+  // UI 渲染 Builder 函数区
+  // =====================================
 
   @Builder SensorRow($$: SensorRowParams) {
     ListItem() {
@@ -332,14 +321,6 @@ export struct ControlView {
     .backgroundColor(Colors.BackgroundSoft)
     .border({ width: { left: 4 }, color: highlightColor })
     .borderRadius({ topRight: 4, bottomRight: 4 })
-    .onClick(() => {
-      AlertDialog.show({
-        title: '系统权限操作',
-        message: `您正在请求执行「${title}」操作，是否确认继续？`,
-        primaryButton: { value: '取消', fontColor: Colors.TextNormal, action: () => {} },
-        secondaryButton: { value: '确认执行', fontColor: Colors.Cyan, action: () => {} }
-      })
-    })
   }
 
   @Builder BottomStatItem(label: string, value: string, color: string) {

@@ -2,22 +2,10 @@
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 
-interface AlarmItem {
-  time: string;
-  content: string;
-  status: string;
-  isResolved: boolean;
-}
-
 @Component
 export struct AlarmCard {
-  @State alarmList: AlarmItem[] = [
-    { time: '14:21', content: 'CO 浓度超限', status: '已恢复', isResolved: true },
-    { time: '15:05', content: 'AGV 避障触发', status: '处理中', isResolved: false },
-    { time: '15:12', content: '烟雾预警', status: '已恢复', isResolved: true }
-  ];
-
-  // 新增：告警呼吸灯的透明度状态
+  @StorageProp('env_mq2_alarm') mq2Alarm: number = 0;
+  @StorageProp('env_mq7_alarm') mq7Alarm: number = 0;
   @State warningOpacity: number = 1;
 
   aboutToAppear() {
@@ -31,61 +19,38 @@ export struct AlarmCard {
   build() {
     Column() {
       Row() {
-        Text('安全事件记录')
-          .fontColor(Colors.Title)
-          .fontSize(21)
-          .fontWeight(FontWeight.Bold)
-          .margin({ left: 8 })
+        Text('安全事件记录').fontColor(Colors.Title).fontSize(21).fontWeight(FontWeight.Bold).margin({ left: 8 })
         Blank()
-        Text('ALERT LOG')
-          .fontColor(Colors.TextMuted)
-          .fontSize(11)
+        Text('ALERT LOG').fontColor(Colors.TextMuted).fontSize(11)
       }
-      .width(Constants.FullWidth)
-      .padding(Constants.DefaultPadding)
-      .border({ width: { bottom: 1 }, color: Colors.BorderSoft })
+      .width(Constants.FullWidth).padding(Constants.DefaultPadding).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
 
-      Row() {
-        Text('时间').width('25%').fontColor(Colors.TextMuted).fontSize(12)
-        Text('事件').width('45%').fontColor(Colors.TextMuted).fontSize(12)
-        Text('状态').width('30%').fontColor(Colors.TextMuted).fontSize(12).textAlign(TextAlign.End)
-      }
-      .width(Constants.FullWidth)
-      .padding({ left: 14, right: 14, top: 10, bottom: 4 })
-
+      // 依据硬件标志位实时渲染报警 UI
       List({ space: 7 }) {
-        ForEach(this.alarmList, (item: AlarmItem) => {
-          ListItem() {
-            Row() {
-              Text(item.time).width('25%').fontColor(Colors.TextNormal).fontSize(13)
-              Text(item.content)
-                .width('45%')
-                .fontColor(item.isResolved ? Colors.TextNormal : Colors.Danger) // 异常内容直接标红
-                .fontSize(13)
-              Text(item.status)
-                .width('30%')
-                .fontColor(item.isResolved ? Colors.Normal : Colors.Danger)
-                .fontSize(13)
-                .textAlign(TextAlign.End)
-            }
-            .width(Constants.FullWidth)
-            .height(34)
-            .padding({ left: 10, right: 10 })
-            // 正常条目背景为软背景，未处理异常条目背景微红并增加呼吸效果
-            .backgroundColor(item.isResolved ? Colors.BackgroundSoft : '#1AFFF5E5')
-            .opacity(item.isResolved ? 1 : this.warningOpacity)
-            .borderRadius(4)
-          }
-        })
-      }
-      .width(Constants.FullWidth)
-      .layoutWeight(1)
-      .padding({ left: 12, right: 12, bottom: 12 })
+        if (this.mq2Alarm === 1) {
+          this.AlarmItemUI('烟雾浓度超标', '紧急告警', false)
+        }
+        if (this.mq7Alarm === 1) {
+          this.AlarmItemUI('CO 浓度超界', '危险', false)
+        }
+        if (this.mq2Alarm === 0 && this.mq7Alarm === 0) {
+          this.AlarmItemUI('车间环境正常', '巡检通过', true)
+        }
+      }.width(Constants.FullWidth).layoutWeight(1).padding({ left: 12, right: 12, top: 12, bottom: 12 })
     }
-    .width(Constants.FullWidth)
-    .height(Constants.FullHeight)
-    .backgroundColor(Colors.PanelBg)
-    .borderRadius(Constants.CardRadius)
-    .border({ width: Constants.BorderWidth, color: Colors.BorderSoft })
+    .width(Constants.FullWidth).height(Constants.FullHeight).backgroundColor(Colors.PanelBg).borderRadius(Constants.CardRadius).border({ width: Constants.BorderWidth, color: Colors.BorderSoft })
+  }
+
+  @Builder AlarmItemUI(content: string, status: string, isResolved: boolean) {
+    ListItem() {
+      Row() {
+        Text(content).width('50%').fontColor(isResolved ? Colors.TextNormal : Colors.Danger).fontSize(13)
+        Text(status).width('50%').fontColor(isResolved ? Colors.Normal : Colors.Danger).fontSize(13).textAlign(TextAlign.End)
+      }
+      .width(Constants.FullWidth).height(34).padding({ left: 10, right: 10 })
+      .backgroundColor(isResolved ? Colors.BackgroundSoft : '#1AFFF5E5')
+      .opacity(isResolved ? 1 : this.warningOpacity)
+      .borderRadius(4)
+    }
   }
 }
