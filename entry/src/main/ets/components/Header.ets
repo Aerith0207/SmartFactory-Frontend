@@ -6,6 +6,7 @@ import { MockData } from '../data/MockData';
 @Component
 export struct Header {
   @State currentTime: string = '';
+  @StorageProp('safety_level') safetyLevel: number = 0;
   private timer: number = -1;
 
   aboutToAppear() {
@@ -47,9 +48,10 @@ export struct Header {
 
       // 右侧系统状态区
       Row({ space: 24 }) { // 缩小了各项间距
-        this.StatusItem('系统状态', '运行中', Colors.Cyan)
+        this.StatusItem('系统状态', this.GetSystemStatus(), this.GetSystemStatusColor())
         this.StatusItem('在线设备', `${MockData.onlineCount}/${MockData.totalCount}`, Colors.Cyan)
-        this.StatusItem('实时告警', `${MockData.alarmCount}`, MockData.alarmCount > 0 ? Colors.Warning : Colors.Normal)
+        this.StatusItem('实时告警', `${this.safetyLevel > 0 ? 1 : MockData.alarmCount}`,
+          this.safetyLevel > 0 ? this.GetSafetyColor() : (MockData.alarmCount > 0 ? Colors.Warning : Colors.Normal))
 
         Text(this.currentTime)
           .fontColor(Colors.Cyan)
@@ -63,6 +65,24 @@ export struct Header {
     .padding({ left: 24, right: 24 }) // 调整两侧内边距
     .backgroundColor(Colors.Background)
     .border({ width: { bottom: 1 }, color: Colors.BorderSoft })
+  }
+
+  GetSafetyColor(): string {
+    if (this.safetyLevel === 1) return Colors.Warning;
+    if (this.safetyLevel === 2) return Colors.Alarm;
+    return Colors.Danger;
+  }
+
+  GetSystemStatus(): string {
+    if (this.safetyLevel === 1) return '安全预警';
+    if (this.safetyLevel === 2) return '告警联动';
+    if (this.safetyLevel === 3) return '应急状态';
+    return '运行中';
+  }
+
+  GetSystemStatusColor(): string {
+    if (this.safetyLevel === 0) return Colors.Cyan;
+    return this.GetSafetyColor();
   }
 
   @Builder

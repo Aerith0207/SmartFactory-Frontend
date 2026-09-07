@@ -1,3 +1,5 @@
+import { SafetyEvent } from '../utils/SafetySimulationManager';
+
 export class GlobalDataCenter {
   static init() {
     // 1. 环境传感与报警状态 (对应 smart_factory/status)
@@ -21,5 +23,15 @@ export class GlobalDataCenter {
     AppStorage.setOrCreate('online_smoke', true);
     AppStorage.setOrCreate('online_co', true);
     AppStorage.setOrCreate('switch_light', false);
+
+    // 4. 安全联动演练状态（正常、一级、二级、三级）
+    AppStorage.setOrCreate('safety_level', 0);
+    AppStorage.setOrCreate('safety_title', '系统安全');
+    AppStorage.setOrCreate('safety_detail', '当前未触发安全演练');
+    AppStorage.setOrCreate('safety_action', '设备保持正常运行');
+    AppStorage.setOrCreate('safety_time', '--:--:--');
+    AppStorage.setOrCreate('safety_event_sequence', 0);
+    AppStorage.setOrCreate('safety_events', new Array<SafetyEvent>());
+    AppStorage.setOrCreate('agv_running', true);
   }
 }
