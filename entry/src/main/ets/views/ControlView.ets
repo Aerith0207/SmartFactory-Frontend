@@ -2,6 +2,7 @@
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
 import { MqttManager } from '../utils/MqttManager';
+import { SafetySimulationManager } from '../utils/SafetySimulationManager';
 
 interface ActionCommand {
   label: string;
@@ -38,6 +39,12 @@ export struct ControlView {
   @StorageLink('switch_light') switchLight: boolean = false;
   @StorageLink('light_mode') lightMode: number = -1;
 
+  @StorageLink('safety_level') safetyLevel: number = 0;
+  @StorageLink('safety_title') safetyTitle: string = '系统安全';
+  @StorageLink('safety_detail') safetyDetail: string = '当前未触发安全演练';
+  @StorageLink('safety_action') safetyAction: string = '设备保持正常运行';
+  @StorageLink('agv_running') agvRunning: boolean = true;
+
   // --- 静态配置数据 ---
   private agvActions: ActionCommand[] = [
     { label: '启动 AGV', color: Colors.Normal },
@@ -66,7 +73,7 @@ export struct ControlView {
         Row({ space: 16 }) {
           this.TopStatusTag('运行模式', 'MANUAL MODE', Colors.Cyan)
           this.TopStatusTag('设备心跳', '5 / 5 ONLINE', Colors.Normal)
-          this.TopStatusTag('通信链路', 'MQTT Connected', Colors.Normal)
+          this.TopStatusTag('演练状态', this.safetyLevel === 0 ? 'NORMAL' : this.safetyTitle, this.GetSafetyColor())
           this.TopStatusTag('Current User', 'Engineer', Colors.Warning)
         }
       }
@@ -118,7 +125,8 @@ export struct ControlView {
             Row() {
               Text('AGV-01 节点').fontColor(Colors.Title).fontSize(16).fontWeight(FontWeight.Bold)
               Blank()
-              Text('● 运行中').fontColor(Colors.Normal).fontSize(14).fontWeight(FontWeight.Bold)
+              Text(this.agvRunning ? '● 运行中' : '■ 已停摆')
+                .fontColor(this.agvRunning ? Colors.Normal : Colors.Danger).fontSize(14).fontWeight(FontWeight.Bold)
             }.width('100%')
             Divider().color(Colors.BorderSoft).opacity(0.5)
             Row() {
@@ -201,6 +209,25 @@ export struct ControlView {
             this.MqttParamItem('QoS Level', '1')
           }.width('100%').backgroundColor(Colors.BackgroundSoft).padding(12).borderRadius(6).margin({ bottom: 8 })
 
+          Column({ space: 8 }) {
+            Row() {
+              Text('安全联动演练').fontColor(Colors.Title).fontSize(14).fontWeight(FontWeight.Bold)
+              Blank()
+              Text(this.safetyTitle).fontColor(this.GetSafetyColor()).fontSize(12).fontWeight(FontWeight.Bold)
+            }.width(Constants.FullWidth)
+            Row({ space: 6 }) {
+              this.SafetyScenarioButton('正常', 0, Colors.Normal)
+              this.SafetyScenarioButton('一级', 1, Colors.Warning)
+              this.SafetyScenarioButton('二级', 2, Colors.Alarm)
+              this.SafetyScenarioButton('三级', 3, Colors.Danger)
+            }.width(Constants.FullWidth)
+            Text(`触发：${this.safetyDetail}`).fontColor(Colors.TextMuted).fontSize(11)
+              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+            Text(`联动：${this.safetyAction}`).fontColor(Colors.TextNormal).fontSize(11)
+              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          .width(Constants.FullWidth).padding(10).backgroundColor(Colors.BackgroundSoft).borderRadius(6)
+
           Column({ space: 12 }) {
             ForEach(this.sysCommands, (cmd: SysCommand) => {
               this.SysCommandItem(cmd.name, cmd.status, cmd.color)
@@ -220,6 +247,7 @@ export struct ControlView {
           .backgroundColor(Colors.Danger)
           .borderRadius(8)
           .shadow({ radius: 15, color: Colors.Danger, offsetX: 0, offsetY: 0 })
+          .onClick(() => SafetySimulationManager.applyScenario(3))
         }
         .layoutWeight(1)
         .height('100%')
@@ -250,6 +278,27 @@ export struct ControlView {
     }
     .width(Constants.FullWidth)
     .height(Constants.FullHeight)
+  }
+
+  GetSafetyColor(): string {
+    if (this.safetyLevel === 0) return Colors.Normal;
+    if (this.safetyLevel === 1) return Colors.Warning;
+    if (this.safetyLevel === 2) return Colors.Alarm;
+    return Colors.Danger;
+  }
+
+  @Builder SafetyScenarioButton(label: string, level: number, color: string) {
+    Button(label)
+      .type(ButtonType.Normal)
+      .layoutWeight(1)
+      .height(30)
+      .fontSize(11)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.safetyLevel === level ? Colors.Background : color)
+      .backgroundColor(this.safetyLevel === level ? color : Colors.PanelBgBright)
+      .border({ width: 1, color: color })
+      .borderRadius(4)
+      .onClick(() => SafetySimulationManager.applyScenario(level))
   }
 
   // =====================================

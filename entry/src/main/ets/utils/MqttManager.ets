@@ -158,6 +158,8 @@ export class MqttManager {
       const data = JSON.parse(payloadString) as FactoryCountPayload;
       if (data.model !== undefined) AppStorage.setOrCreate('count_model', data.model);
       if (data.count !== undefined) AppStorage.setOrCreate('count_num', data.count);
+      console.info(`【MQTT追踪】5. 计数报文解析成功! 当前型号: ${data.model}, 实时计数值: ${data.count}`);
+      console.info('【MQTT追踪】6. 全局状态已驱动UI重绘');
     } catch (e) {
       console.error('【MQTT追踪】❌ 解析计数 JSON 失败:', payloadString);
     }

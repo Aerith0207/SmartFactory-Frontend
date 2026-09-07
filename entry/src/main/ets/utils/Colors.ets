@@ -11,5 +11,6 @@ export class Colors {
   static readonly TextMuted: string = '#56739D';
   static readonly Normal: string = '#26E6B0';
   static readonly Warning: string = '#FFC857';
+  static readonly Alarm: string = '#FF9F43';
   static readonly Danger: string = '#FF6178';
 }

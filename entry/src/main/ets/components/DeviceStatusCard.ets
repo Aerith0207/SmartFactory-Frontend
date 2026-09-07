@@ -10,6 +10,7 @@ interface DeviceStatus {
 
 @Component
 export struct DeviceStatusCard {
+  @StorageProp('agv_running') agvRunning: boolean = true;
   @State deviceList: DeviceStatus[] = [
     { name: '温湿度传感器', isOnline: true, statusText: '运行正常' },
     { name: '烟雾传感器', isOnline: true, statusText: '运行正常' },
@@ -52,19 +53,21 @@ export struct DeviceStatusCard {
             Row() {
               Stack() {
                 // 内层：中心静态实心圆
-                Circle({ width: 8, height: 8 }).fill(item.isOnline ? Colors.Normal : Colors.Danger)
+                Circle({ width: 8, height: 8 }).fill(this.GetDeviceColor(item))
                 // 外层：不断扩散的脉冲波纹圆
                 Circle({ width: 8, height: 8 })
                   .fill('transparent')
-                  .stroke(item.isOnline ? Colors.Normal : Colors.Danger)
+                  .stroke(this.GetDeviceColor(item))
                   .strokeWidth(2)
                   .scale({ x: this.pulseScale, y: this.pulseScale })
                   .opacity(this.pulseOpacity)
               }.width(28)
 
               Text(item.name).fontColor(Colors.TextNormal).fontSize(17).layoutWeight(1)
-              Text(item.isOnline ? '在线' : '离线').fontColor(item.isOnline ? Colors.Normal : Colors.Danger).fontSize(16).fontWeight(FontWeight.Bold)
-              Text(item.statusText).fontColor(Colors.TextMuted).fontSize(14).width(78).textAlign(TextAlign.End)
+              Text(item.name === '小车 (AGV)' && !this.agvRunning ? '已停摆' : (item.isOnline ? '在线' : '离线'))
+                .fontColor(this.GetDeviceColor(item)).fontSize(16).fontWeight(FontWeight.Bold)
+              Text(item.name === '小车 (AGV)' && !this.agvRunning ? '联动停机' : item.statusText)
+                .fontColor(Colors.TextMuted).fontSize(14).width(78).textAlign(TextAlign.End)
             }
             .width(Constants.FullWidth).height(44).padding({ left: 12, right: 12 }).backgroundColor(Colors.BackgroundSoft).borderRadius(4)
           }
@@ -73,5 +76,10 @@ export struct DeviceStatusCard {
       .width(Constants.FullWidth).layoutWeight(1).padding({ top: 12, left: 12, right: 12, bottom: 14 })
     }
     .width(Constants.FullWidth).height(Constants.FullHeight).backgroundColor(Colors.PanelBg).borderRadius(Constants.CardRadius).border({ width: Constants.BorderWidth, color: Colors.BorderSoft })
+  }
+
+  GetDeviceColor(item: DeviceStatus): string {
+    if (item.name === '小车 (AGV)' && !this.agvRunning) return Colors.Danger;
+    return item.isOnline ? Colors.Normal : Colors.Danger;
   }
 }

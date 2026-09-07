@@ -1,6 +1,7 @@
 // src/main/ets/views/SystemLogView.ets
 import { Colors } from '../utils/Colors';
 import { Constants } from '../utils/Constants';
+import { SafetyEvent } from '../utils/SafetySimulationManager';
 
 interface SystemLog {
   time: string;
@@ -24,6 +25,10 @@ interface DeviceStatus {
 @Component
 export struct SystemLogView {
   @State currentFilter: string = '全部';
+  @StorageProp('safety_level') safetyLevel: number = 0;
+  @StorageProp('safety_event_sequence') safetyEventSequence: number = 0;
+  @StorageProp('safety_events') safetyEvents: SafetyEvent[] = [];
+  @StorageProp('agv_running') agvRunning: boolean = true;
 
   @State logList: SystemLog[] = [
     { time: '10:05:12', module: '生产指令', content: '下发结束排产指令，订单A100生产完成', level: 'INFO' },
@@ -131,9 +136,9 @@ export struct SystemLogView {
       }.width(Constants.FullWidth).padding({ top: 12, bottom: 8, left: 12, right: 12 })
 
       List({ space: 8 }) {
-        ForEach(this.logList.filter(item => {
+        ForEach(this.GetDisplayLogs().filter(item => {
           if (this.currentFilter === '全部') return true;
-          if (this.currentFilter === '安全报警') return item.level === 'WARNING' || item.level === 'ERROR';
+          if (this.currentFilter === '安全报警') return item.level === 'WARNING' || item.level === 'ERROR' || item.level === 'CRITICAL';
           if (this.currentFilter === '控制审计') return item.module === '生产指令' || item.module === '系统授权';
           if (this.currentFilter === '设备状态') return item.module === '环境传感' || item.module === 'AGV调度';
           return true;
@@ -157,8 +162,8 @@ export struct SystemLogView {
     Column() {
       Row() { Text('今日运行统计').fontColor(Colors.Title).fontSize(16).fontWeight(FontWeight.Bold) }.width(Constants.FullWidth).padding({ bottom: 8 }).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
       Row() {
-        this.KpiItem('今日事件', '152', Colors.Cyan)
-        this.KpiItem('报警次数', '3', Colors.Danger)
+        this.KpiItem('今日事件', `${152 + this.safetyEventSequence}`, Colors.Cyan)
+        this.KpiItem('报警次数', `${3 + this.GetAlarmCount()}`, Colors.Danger)
         this.KpiItem('控制指令', '48', Colors.Warning)
         this.KpiItem('在线设备', '5/5', Colors.Normal)
       }.layoutWeight(1).width(Constants.FullWidth).alignItems(VerticalAlign.Center)
@@ -174,8 +179,8 @@ export struct SystemLogView {
       Row() {
         Text('当前系统底层状态').fontColor(Colors.Title).fontSize(16).fontWeight(FontWeight.Bold)
         Blank()
-        Circle({ width: 8, height: 8 }).fill(Colors.Normal).margin({ right: 6 })
-        Text('链路正常').fontColor(Colors.Normal).fontSize(12)
+        Circle({ width: 8, height: 8 }).fill(this.GetSafetyColor()).margin({ right: 6 })
+        Text(this.safetyLevel === 0 ? '链路正常' : '安全事件处理中').fontColor(this.GetSafetyColor()).fontSize(12)
       }.width(Constants.FullWidth).padding({ bottom: 8 }).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
       Row() {
         this.SysStatusItem('MQTTBroker', '已连接', Colors.Normal)
@@ -194,7 +199,7 @@ export struct SystemLogView {
     Column() {
       Row() { Text('历史报警追溯').fontColor(Colors.Title).fontSize(16).fontWeight(FontWeight.Bold) }.width(Constants.FullWidth).padding({ bottom: 12 }).border({ width: { bottom: 1 }, color: Colors.BorderSoft })
       List({ space: 10 }) {
-        ForEach(this.alarmList, (item: HistoryAlarm) => {
+        ForEach(this.GetAlarmHistory(), (item: HistoryAlarm) => {
           ListItem() { Row() { Text(item.time).width('20%').fontColor(Colors.TextMuted).fontSize(13); Text(item.content).width('55%').fontColor(Colors.Warning).fontSize(13); Text(item.status).width('25%').fontColor(Colors.Normal).fontSize(13).textAlign(TextAlign.End) }.width(Constants.FullWidth) }
         })
       }.layoutWeight(1).width(Constants.FullWidth).padding({ top: 12 })
@@ -207,10 +212,60 @@ export struct SystemLogView {
       Row() { Text('设备阵列').width('40%').fontColor(Colors.TextMuted).fontSize(12); Text('当前状态').width('30%').fontColor(Colors.TextMuted).fontSize(12); Text('连续运行').width('30%').fontColor(Colors.TextMuted).fontSize(12).textAlign(TextAlign.End) }.width(Constants.FullWidth).padding({ top: 8, bottom: 8 })
       List({ space: 10 }) {
         ForEach(this.deviceList, (item: DeviceStatus) => {
-          ListItem() { Row() { Text(item.device).width('40%').fontColor(Colors.TextNormal).fontSize(13); Text(item.status).width('30%').fontColor(Colors.Normal).fontSize(13); Text(item.runTime).width('30%').fontColor(Colors.Cyan).fontSize(13).fontFamily('Courier New').textAlign(TextAlign.End) }.width(Constants.FullWidth) }
+          ListItem() {
+            Row() {
+              Text(item.device).width('40%').fontColor(Colors.TextNormal).fontSize(13)
+              Text(item.device === 'AGV调度机' && !this.agvRunning ? '已停摆' : item.status)
+                .width('30%')
+                .fontColor(item.device === 'AGV调度机' && !this.agvRunning ? Colors.Danger : Colors.Normal)
+                .fontSize(13)
+              Text(item.device === 'AGV调度机' && !this.agvRunning ? '联动停机' : item.runTime)
+                .width('30%').fontColor(Colors.Cyan).fontSize(13).fontFamily('Courier New').textAlign(TextAlign.End)
+            }.width(Constants.FullWidth)
+          }
         })
       }.layoutWeight(1).width(Constants.FullWidth).padding({ top: 4 })
     }.layoutWeight(1.5).height('100%').backgroundColor(Colors.PanelBg).borderRadius(Constants.CardRadius).border({ width: Constants.BorderWidth, color: Colors.BorderSoft }).padding(16)
+  }
+
+  GetDisplayLogs(): SystemLog[] {
+    const displayLogs: SystemLog[] = [];
+
+    this.safetyEvents.forEach((event: SafetyEvent) => {
+      displayLogs.push({
+        time: event.time,
+        module: '安全演练',
+        content: `${event.title}：${event.detail}；联动：${event.action}`,
+        level: event.logLevel
+      });
+    });
+    this.logList.forEach((item: SystemLog) => displayLogs.push(item));
+    return displayLogs;
+  }
+
+  GetAlarmHistory(): HistoryAlarm[] {
+    const history: HistoryAlarm[] = [];
+
+    this.safetyEvents.forEach((event: SafetyEvent) => {
+      history.push({ time: event.time.substring(0, 5), content: event.title, status: event.status });
+    });
+    this.alarmList.forEach((item: HistoryAlarm) => history.push(item));
+    return history;
+  }
+
+  GetAlarmCount(): number {
+    let count = 0;
+    this.safetyEvents.forEach((event: SafetyEvent) => {
+      if (event.level > 0) count += 1;
+    });
+    return count;
+  }
+
+  GetSafetyColor(): string {
+    if (this.safetyLevel === 0) return Colors.Normal;
+    if (this.safetyLevel === 1) return Colors.Warning;
+    if (this.safetyLevel === 2) return Colors.Alarm;
+    return Colors.Danger;
   }
 
   GetLevelColor(level: string): string {
@@ -219,6 +274,7 @@ export struct SystemLogView {
       case 'SUCCESS': return Colors.Normal;
       case 'WARNING': return Colors.Warning;
       case 'ERROR': return Colors.Danger;
+      case 'CRITICAL': return Colors.Danger;
       default: return Colors.TextNormal;
     }
   }
