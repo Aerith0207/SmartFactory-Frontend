@@ -2,12 +2,15 @@
 import {
   MqttAsync,
   MqttClient,
+  MqttConnectOptions,
   MqttSubscribeOptions,
-  MqttPublishOptions, // 🌟 新增：导入 Publish 选项类型
-  MqttMessage
+  MqttPublishOptions,
+  MqttMessage,
+  MQTT_SSL_VERSION
 } from '@ohos/mqtt';
-import util from '@ohos.util';
+import { buffer } from '@kit.ArkTS';
 import { Constants } from './Constants';
+import { SecurePayloadCodec } from './security/SecurePayloadCodec';
 
 interface AgvPayload {
   front?: number;
@@ -57,12 +60,13 @@ export class MqttManager {
     return MqttManager.instance;
   }
 
-  public connect() {
+  public async connect(): Promise<void> {
     console.info('【MQTT追踪】1. 开始初始化 MQTT 客户端...');
 
     try {
+      await SecurePayloadCodec.initialize();
       this.client = MqttAsync.createMqtt({
-        url: 'tcp://broker-cn.emqx.io:1883',
+        url: Constants.getMqttUrl(),
         clientId: 'hi3861_smart_factory_app_' + Math.floor(Math.random() * 10000),
         persistenceType: 1
       });
@@ -81,40 +85,45 @@ export class MqttManager {
           if (typeof rawPayload === 'string') {
             payload = rawPayload;
           } else if (rawPayload instanceof ArrayBuffer) {
-            let textDecoder = util.TextDecoder.create("utf-8");
-            payload = textDecoder.decodeWithStream(new Uint8Array(rawPayload));
+            payload = buffer.from(new Uint8Array(rawPayload)).toString('utf-8');
           }
 
-          console.info(`【MQTT追踪】4. 收到云端推送! 主题: [${topic}], 内容: [${payload}]`);
-
-          if (topic === 'smart_car/distance' && payload !== '') {
-            this.handleAgvDistance(payload);
-          } else if (topic === Constants.TOPIC_STATUS && payload !== '') {
-            this.handleFactoryStatus(payload);
-          } else if (topic === Constants.TOPIC_COUNT_REPORT && payload !== '') {
-            this.handleCountReport(payload);
+          if (payload !== '') {
+            this.processIncomingMessage(topic, payload).catch((processError: Error) => {
+              console.error(`【安全链路】拒绝主题 [${topic}] 的无效报文: ${processError.message}`);
+            });
           }
         }
       });
 
       this.client.connectLost((err: Error) => {
+        AppStorage.setOrCreate('mqtt_connection_state', '连接中断');
         console.error('【MQTT追踪】!! 连接意外断开 !! 错误信息: ', JSON.stringify(err));
       });
 
       console.info('【MQTT追踪】2. 正在向 EMQX 发起网络连接请求...');
 
-      this.client.connect({
-        userName: 'hi3861',
-        password: 'public',
+      const connectOptions: MqttConnectOptions = {
+        userName: Constants.MQTT_USERNAME,
+        password: Constants.MQTT_PASSWORD,
         cleanSession: true,
         keepAliveInterval: 60
-      }).then(() => {
+      };
+      if (Constants.MQTT_TLS_ENABLED) {
+        connectOptions.sslOptions = {
+          enableServerCertAuth: true,
+          verify: true,
+          sslVersion: MQTT_SSL_VERSION.MQTT_SSL_VERSION_TLS_1_2
+        };
+      }
+
+      this.client.connect(connectOptions).then(() => {
+        AppStorage.setOrCreate('mqtt_connection_state', '已连接');
         console.info('【MQTT追踪】3. ✔️ 成功连接至 EMQX 服务器！开始订阅主题...');
 
-        // 🌟 修复点：不再使用对象字面量数组，显式声明 MqttSubscribeOptions
-        const sub1: MqttSubscribeOptions = { topic: 'smart_car/distance', qos: 0 };
-        const sub2: MqttSubscribeOptions = { topic: Constants.TOPIC_STATUS, qos: 0 };
-        const sub3: MqttSubscribeOptions = { topic: Constants.TOPIC_COUNT_REPORT, qos: 0 };
+        const sub1: MqttSubscribeOptions = { topic: 'smart_car/distance', qos: Constants.MQTT_TELEMETRY_QOS };
+        const sub2: MqttSubscribeOptions = { topic: Constants.TOPIC_STATUS, qos: Constants.MQTT_TELEMETRY_QOS };
+        const sub3: MqttSubscribeOptions = { topic: Constants.TOPIC_COUNT_REPORT, qos: Constants.MQTT_TELEMETRY_QOS };
 
         this.client?.subscribe(sub1)
           .then(() => console.info(`【MQTT追踪】✔️ 成功订阅主题: ${sub1.topic}`))
@@ -129,11 +138,27 @@ export class MqttManager {
           .catch((err: Error) => console.error(`【MQTT追踪】❌ 订阅失败: ${sub3.topic}`, JSON.stringify(err)));
 
       }).catch((connErr: Error) => {
+        AppStorage.setOrCreate('mqtt_connection_state', '连接失败');
         console.error('【MQTT追踪】❌ 网络连接失败: ', JSON.stringify(connErr));
       });
 
     } catch (error) {
+      AppStorage.setOrCreate('mqtt_connection_state', '安全初始化失败');
       console.error('【MQTT追踪】❌ 初始化严重崩溃: ', JSON.stringify(error));
+    }
+  }
+
+  private async processIncomingMessage(topic: string, transportPayload: string): Promise<void> {
+    const decoded = await SecurePayloadCodec.decode(transportPayload, topic);
+    AppStorage.setOrCreate('mqtt_last_payload_mode', decoded.encrypted ? 'AES-GCM' : 'PLAINTEXT');
+    console.info(`【MQTT追踪】4. 收到主题 [${topic}]，安全模式: ${decoded.encrypted ? 'AES-GCM' : '明文兼容'}`);
+
+    if (topic === 'smart_car/distance') {
+      this.handleAgvDistance(decoded.plainText);
+    } else if (topic === Constants.TOPIC_STATUS) {
+      this.handleFactoryStatus(decoded.plainText);
+    } else if (topic === Constants.TOPIC_COUNT_REPORT) {
+      this.handleCountReport(decoded.plainText);
     }
   }
 
@@ -178,46 +203,42 @@ export class MqttManager {
     }
   }
 
-  public publishLightControl(cmd: string) {
-    if (!this.client) return;
-
-    // 🌟 修复点：使用明确的类实例化
+  public async publishLightControl(cmd: string): Promise<void> {
     const msg = new LightCommand();
     msg.cmd = cmd;
     const payload = JSON.stringify(msg);
-
-    // 🌟 修复点：使用明确的 MqttPublishOptions 类型
-    const pubOpts: MqttPublishOptions = {
-      topic: Constants.TOPIC_CONTROL,
-      payload: payload,
-      qos: 0,
-      retained: false
-    };
-
-    this.client.publish(pubOpts)
-      .then(() => console.info(`【MQTT控制】-> 成功发送灯光指令: ${payload}`))
-      .catch((err: Error) => console.error(`【MQTT控制】❌ 发送灯光指令失败:`, JSON.stringify(err))); // 🌟 修复点：显式 Error 类型
+    await this.publishJson(Constants.TOPIC_CONTROL, payload, '灯光指令');
   }
 
-  public publishCountControl(cmd: string, model?: string) {
-    if (!this.client) return;
-
+  public async publishCountControl(cmd: string, model?: string): Promise<void> {
     const msg = new CountCommand();
     msg.cmd = cmd;
     if (model) {
       msg.model = model;
     }
     const payload = JSON.stringify(msg);
+    await this.publishJson(Constants.TOPIC_COUNT_CONTROL, payload, '计数指令');
+  }
 
-    const pubOpts: MqttPublishOptions = {
-      topic: Constants.TOPIC_COUNT_CONTROL,
-      payload: payload,
-      qos: 0,
-      retained: false
-    };
+  private async publishJson(topic: string, plainPayload: string, description: string): Promise<void> {
+    if (!this.client) {
+      console.error(`【MQTT控制】❌ ${description}发送失败：客户端未连接`);
+      return;
+    }
 
-    this.client.publish(pubOpts)
-      .then(() => console.info(`【MQTT控制】-> 成功发送计数指令: ${payload}`))
-      .catch((err: Error) => console.error(`【MQTT控制】❌ 发送计数指令失败:`, JSON.stringify(err)));
+    try {
+      const transportPayload = await SecurePayloadCodec.encode(plainPayload, topic);
+      const pubOpts: MqttPublishOptions = {
+        topic: topic,
+        payload: transportPayload,
+        qos: Constants.MQTT_COMMAND_QOS,
+        retained: false
+      };
+
+      await this.client.publish(pubOpts);
+      console.info(`【MQTT控制】✔️ ${description}发送成功，载荷模式: ${Constants.MQTT_PAYLOAD_ENCRYPTION_ENABLED ? 'AES-GCM' : '明文兼容'}`);
+    } catch (error) {
+      console.error(`【MQTT控制】❌ ${description}发送失败: ${JSON.stringify(error)}`);
+    }
   }
 }

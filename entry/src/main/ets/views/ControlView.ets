@@ -45,6 +45,14 @@ export struct ControlView {
   @StorageLink('safety_action') safetyAction: string = '设备保持正常运行';
   @StorageLink('agv_running') agvRunning: boolean = true;
 
+  @StorageLink('mqtt_connection_state') mqttConnectionState: string = '连接中';
+  @StorageLink('mqtt_transport_security') mqttTransportSecurity: string = 'TCP 兼容模式';
+  @StorageLink('mqtt_payload_security') mqttPayloadSecurity: string = '明文兼容模式';
+  @StorageLink('mqtt_key_security') mqttKeySecurity: string = 'HUKS 待启用';
+  @StorageLink('mqtt_last_payload_mode') mqttLastPayloadMode: string = '--';
+
+  @State isLightOn: boolean = false;
+
   // --- 静态配置数据 ---
   private agvActions: ActionCommand[] = [
     { label: '启动 AGV', color: Colors.Normal },
@@ -103,6 +111,16 @@ export struct ControlView {
               onToggle: (isOn: boolean) => {
                 this.switchLight = isOn;
                 MqttManager.getInstance().publishLightControl(isOn ? 'light_on' : 'light_off');
+              }
+            })
+
+            this.SensorRow({
+              name: '车间照明灯光',
+              isOnline: true,
+              val: this.isLightOn ? 'ON' : 'OFF',
+              isOn: this.isLightOn,
+              onToggle: (isOn: boolean) => {
+                this.isLightOn = isOn;
               }
             })
           }
@@ -199,14 +217,15 @@ export struct ControlView {
             Row() {
               Text('MQTT Security').fontColor(Colors.TextMuted).fontSize(12)
               Blank()
-              Text('● Connected').fontColor(Colors.Normal).fontSize(12).fontWeight(FontWeight.Bold)
+              Text(`● ${this.mqttConnectionState}`).fontColor(this.GetMqttConnectionColor()).fontSize(12).fontWeight(FontWeight.Bold)
             }.width('100%')
             Divider().color(Colors.BorderSoft).margin({ top: 4, bottom: 4 })
-            this.MqttParamItem('Broker', 'EMQX Cloud')
-            this.MqttParamItem('Protocol', 'MQTT over TLS')
-            this.MqttParamItem('Port', '8883')
-            this.MqttParamItem('Encryption', 'TLS 1.2 Enabled')
-            this.MqttParamItem('QoS Level', '1')
+            this.MqttParamItem('Broker', Constants.MQTT_HOST)
+            this.MqttParamItem('Protocol', `${this.mqttTransportSecurity} / ${Constants.getMqttPort()}`)
+            this.MqttParamItem('Payload', this.mqttPayloadSecurity)
+            this.MqttParamItem('Key Storage', this.mqttKeySecurity)
+            this.MqttParamItem('Last Payload', this.mqttLastPayloadMode)
+            this.MqttParamItem('QoS Policy', 'Telemetry 0 / Command 1')
           }.width('100%').backgroundColor(Colors.BackgroundSoft).padding(12).borderRadius(6).margin({ bottom: 8 })
 
           Column({ space: 8 }) {
@@ -284,6 +303,12 @@ export struct ControlView {
     if (this.safetyLevel === 0) return Colors.Normal;
     if (this.safetyLevel === 1) return Colors.Warning;
     if (this.safetyLevel === 2) return Colors.Alarm;
+    return Colors.Danger;
+  }
+
+  GetMqttConnectionColor(): string {
+    if (this.mqttConnectionState === '已连接') return Colors.Normal;
+    if (this.mqttConnectionState === '连接中') return Colors.Warning;
     return Colors.Danger;
   }
 
