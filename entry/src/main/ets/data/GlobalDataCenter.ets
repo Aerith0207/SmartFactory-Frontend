@@ -1,4 +1,5 @@
 import { SafetyEvent } from '../utils/SafetySimulationManager';
+import { Constants } from '../utils/Constants';
 
 export class GlobalDataCenter {
   static init() {
@@ -33,5 +34,14 @@ export class GlobalDataCenter {
     AppStorage.setOrCreate('safety_event_sequence', 0);
     AppStorage.setOrCreate('safety_events', new Array<SafetyEvent>());
     AppStorage.setOrCreate('agv_running', true);
+
+    // 5. 通信安全运行状态：供控制页如实展示，不再使用固定的 TLS 文案。
+    AppStorage.setOrCreate('mqtt_connection_state', '连接中');
+    AppStorage.setOrCreate('mqtt_transport_security', Constants.MQTT_TLS_ENABLED ? 'TLS 1.2' : 'TCP 兼容模式');
+    AppStorage.setOrCreate('mqtt_payload_security',
+      Constants.MQTT_PAYLOAD_ENCRYPTION_ENABLED ? 'AES-256-GCM / HEX' : '明文兼容模式');
+    AppStorage.setOrCreate('mqtt_key_security',
+      Constants.MQTT_PAYLOAD_ENCRYPTION_ENABLED ? 'HUKS 初始化中' : 'HUKS 待启用');
+    AppStorage.setOrCreate('mqtt_last_payload_mode', '--');
   }
 }
